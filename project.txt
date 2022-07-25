@@ -1,0 +1,19 @@
+! CONTEXT:
+	/protocol/
+		&<http://if.fault.io/project/information>
+
+/identifier/
+	&<http://fault.io/development/tools>
+/icon/
+	- (emoji)`🧰`
+/name/
+	`tools`
+/abstract/
+	Abstractions, adapters, and implementations for development support tools.
+
+	- LLVM based coverage and delineation adapters.
+
+/authority/
+	`fault.io`
+/contact/
+	&<http://fault.io/critical>
