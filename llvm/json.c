@@ -22,6 +22,20 @@ print_attribute(FILE *fp, char *attrid, char *str)
 }
 
 int
+print_attribute_after(FILE *fp, char *attr)
+{
+	fprintf(fp, "," quote("%s") ":", attr);
+	return(0);
+}
+
+int
+print_attribute_start(FILE *fp, char *attr)
+{
+	fprintf(fp, quote("%s") ":", attr);
+	return(0);
+}
+
+int
 print_attributes_open(FILE *fp)
 {
 	fputs("{", fp);
@@ -95,12 +109,29 @@ print_string(FILE *fp, char *string, int pcount)
 }
 
 int
+print_string_before(FILE *fp, char *string)
+{
+	fprintf(fp, quote("%s") ",", string);
+	return(0);
+}
+
+int
 print_identifier(FILE *fp, char *str)
 {
 	return print_attribute(fp, "identifier", str);
 }
 
-unsigned long
+int
+print_area(FILE *fp, unsigned long eln, unsigned long ecn, unsigned long xln, unsigned long xcn)
+{
+	if (xcn > 0)
+		--xcn;
+
+	fprintf(fp, "[[%ul,%ul],[%ul,%ul]]", eln, ecn, xln, xcn);
+	return(0);
+}
+
+static unsigned long
 skip(intptr_t ip, unsigned long offset)
 {
 	/* Skip leading decoration if any */
@@ -125,7 +156,7 @@ skip(intptr_t ip, unsigned long offset)
 /**
 	// Recognize retained indentation and overwrite leading decorations.
 */
-unsigned long
+static unsigned long
 rewrite(intptr_t ip, unsigned long offset, unsigned long *out)
 {
 	char *str = (char *) ip;

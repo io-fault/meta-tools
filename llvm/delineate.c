@@ -1,10 +1,39 @@
 /**
 	// Fragments extractor.
 */
-#include "clang-c/Index.h"
+#include <clang-c/Index.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <stdbool.h>
 #include <fault/libc.h>
 #include <fault/fs.h>
+
+int print_attribute(FILE *, char *, char *);
+int print_attribute_after(FILE *, char *);
+int print_attribute_start(FILE *, char *);
+int print_attributes_open(FILE *);
+int print_attributes_close(FILE *);
+
+int print_number_attribute(FILE *, char *, unsigned long);
+int print_number(FILE *, char *, unsigned long);
+int print_expression_open(FILE *, unsigned long, unsigned long);
+int print_expression_node(FILE *, const char *, unsigned long, unsigned long);
+int print_expression_close(FILE *);
+int print_string_attribute(FILE *, char *, CXString);
+int print_string(FILE *, char *, int pcount);
+int print_string_before(FILE *, char *);
+int print_identifier(FILE *, char *);
+int print_open(FILE *, char *);
+int print_open_empty(FILE *, char *);
+int print_enter(FILE *);
+int print_exit(FILE *);
+int print_exit_final(FILE *);
+int print_close_empty(FILE *, char *);
+int print_close(FILE *, char *);
+int print_close_final(FILE *, char *);
+int print_close_no_attributes(FILE *, char *);
+int print_text(FILE *, char *, bool skip_last);
+int print_area(FILE *, unsigned long, unsigned long, unsigned long, unsigned long);
 
 struct Position {
 	unsigned long ln, cn;
@@ -334,7 +363,7 @@ print_path(FILE *fp, CXCursor cursor)
 
 		if (cs != NULL)
 		{
-			fprintf(fp, quote("%s") ",", cs);
+			print_string_before(fp, cs);
 			clang_disposeString(s);
 		}
 	}
@@ -383,15 +412,7 @@ print_source_location(FILE *fp, CXSourceRange range)
 	clang_getPresumedLocation(start, &start_file, &start_line, &start_column);
 	clang_getPresumedLocation(stop, &stop_file, &stop_line, &stop_column);
 
-	fputs("[[", fp);
-	print_number(fp, "line", start_line);
-	print_number(fp, "column", start_column);
-
-	fputs("],[", fp);
-	print_number(fp, "line", stop_line);
-	print_number(fp, "column", stop_column > 0 ? stop_column-1 : 0);
-	fputs("]]", fp);
-
+	print_area(fp, start_line, start_column, stop_line, stop_column);
 	return(0);
 }
 
@@ -618,7 +639,7 @@ print_documented(FILE *fp, CXCursor cursor)
 
 	if (!clang_Range_isNull(docarea))
 	{
-		fputs("," quote("documented") ":", fp);
+		print_attribute_after(fp, "documented");
 		print_source_location(fp, docarea);
 	}
 
@@ -707,7 +728,7 @@ macro(
 	print_attributes_open(ctx->elements);
 	{
 		print_spelling_identifier(ctx->elements, cursor);
-		fputs(quote("area") ":", ctx->elements);
+		print_attribute_start(ctx->elements, "area");
 		print_source_location(ctx->elements, clang_getCursorExtent(cursor));
 		print_documented(ctx->elements, cursor);
 	}
@@ -738,7 +759,7 @@ print_enumeration(
 	print_attributes_open(ctx->elements);
 	{
 		print_spelling_identifier(ctx->elements, cursor);
-		fputs(quote("area") ":", ctx->elements);
+		print_attribute_start(ctx->elements, "area");
 		print_source_location(ctx->elements, clang_getCursorExtent(cursor));
 		print_documented(ctx->elements, cursor);
 	}
@@ -763,7 +784,7 @@ print_collection(struct Image *ctx, CXCursor cursor, CXClientData cd, const char
 	print_attributes_open(ctx->elements);
 	{
 		print_spelling_identifier(ctx->elements, cursor);
-		fputs(quote("area") ":", ctx->elements);
+		print_attribute_start(ctx->elements, "area");
 		print_source_location(ctx->elements, clang_getCursorExtent(cursor));
 		print_documented(ctx->elements, cursor);
 	}
@@ -846,7 +867,7 @@ visitor(CXCursor cursor, CXCursor parent, CXClientData cd)
 			print_attributes_open(ctx->elements);
 			{
 				print_spelling_identifier(ctx->elements, cursor);
-				fputs(quote("area") ":", ctx->elements);
+				print_attribute_start(ctx->elements, "area");
 				print_source_location(ctx->elements, clang_getCursorExtent(cursor));
 				print_documented(ctx->elements, cursor);
 			}
@@ -893,7 +914,7 @@ visitor(CXCursor cursor, CXCursor parent, CXClientData cd)
 				print_attributes_open(ctx->elements);
 				{
 					print_attribute(ctx->elements, "system", (char *) clang_getCString(ifilename));
-					fputs(quote("area") ":", ctx->elements);
+					print_attribute_start(ctx->elements, "area");
 					print_source_location(ctx->elements, clang_getCursorExtent(cursor));
 				}
 				print_attributes_close(ctx->elements);
@@ -941,7 +962,7 @@ visitor(CXCursor cursor, CXCursor parent, CXClientData cd)
 			print_attributes_open(ctx->elements);
 			{
 				print_spelling_identifier(ctx->elements, cursor);
-				fputs(quote("area") ":", ctx->elements);
+				print_attribute_start(ctx->elements, "area");
 				print_source_location(ctx->elements, clang_getCursorExtent(cursor));
 				print_documented(ctx->elements, cursor);
 			}
@@ -970,7 +991,7 @@ visitor(CXCursor cursor, CXCursor parent, CXClientData cd)
 			print_attributes_open(ctx->elements);
 			{
 				print_spelling_identifier(ctx->elements, cursor);
-				fputs(quote("area") ":", ctx->elements);
+				print_attribute_start(ctx->elements, "area");
 				print_source_location(ctx->elements, clang_getCursorExtent(cursor));
 				print_documented(ctx->elements, cursor);
 			}
