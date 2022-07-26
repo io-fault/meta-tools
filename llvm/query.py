@@ -1,5 +1,5 @@
 """
-# System queries for realizing extension and executable requirements.
+# System queries for extracting usage information from `clang` and `llvm-config`.
 """
 import sys
 import itertools
@@ -95,7 +95,7 @@ def parse_clang_standards_1(string):
 		if x.strip()
 	}
 
-def clang(executable, type='executable'):
+def clang(executable, type='executable', libdir='lib'):
 	"""
 	# Extract information from the given clang &executable.
 	"""
@@ -130,7 +130,7 @@ def clang(executable, type='executable'):
 	builtins = None
 	if cclib is None:
 		cclib = files.Path.from_relative(root, search_dirs_data['libraries'][0])
-		cclib = cclib / 'lib' / sys.platform
+		cclib = cclib / libdir / sys.platform
 
 	if sys.platform in {'darwin'}:
 		builtins = cclib / 'libclang_rt.osx.a'
@@ -174,12 +174,12 @@ def clang(executable, type='executable'):
 
 	return clang
 
-def instrumentation(llvm_config_path, merge_path=None, export_path=None, tool_name='llvm', type='executable'):
+def instrumentation(llvm_config_path, merge_path=None, export_path=None, type='executable'):
 	"""
-	# Extract information necessary for compiling a Python extension using the LLVM
-	# coverage tools for extracting counters from profile data.
+	# Identify instrumentation related commands and libraries for making extraction tools.
 	"""
 	srcpath = str(llvm_config_path)
+	v_pipe = ['--version']
 	libs_pipe = ['profiledata', '--libs']
 	syslibs_pipe = ['profiledata', '--system-libs']
 	covlibs_pipe = ['coverage', '--libs']
@@ -190,6 +190,7 @@ def instrumentation(llvm_config_path, merge_path=None, export_path=None, tool_na
 	po = lambda x: execution.dereference(execution.KInvocation(*execution.prepare(type, srcpath, x)))
 	outs = [
 		po([srcpath, '--prefix']),
+		po(v_pipe),
 		po(libs_pipe),
 		po(syslibs_pipe),
 		po(covlibs_pipe),
@@ -198,7 +199,7 @@ def instrumentation(llvm_config_path, merge_path=None, export_path=None, tool_na
 		po(rtti_pipe),
 	]
 
-	prefix, libs, syslibs, covlibs, libdirs, incdirs, rtti = [x[-1].decode('utf-8') for x in outs]
+	prefix, v, libs, syslibs, covlibs, libdirs, incdirs, rtti = [x[-1].decode('utf-8') for x in outs]
 
 	libs = split_config_output('-l', libs)
 	libs.discard('')
@@ -236,7 +237,7 @@ def instrumentation(llvm_config_path, merge_path=None, export_path=None, tool_na
 		'system-libraries': syslibs,
 	}
 
-	return srcpath, str(merge_path), str(export_path), fp
+	return v.strip(), srcpath, str(merge_path), str(export_path), fp
 
 if __name__ == '__main__':
 	import pprint
