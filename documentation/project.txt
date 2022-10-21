@@ -5,15 +5,16 @@
 /identifier/
 	&<http://fault.io/development/tools>
 /icon/
-	- (emoji)`🧰`
+	&<data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2Ij48dGV4dCB4PSI0IiB5PSIwLjg4ZW0iIGZvbnQtc2l6ZT0iMjQ4Ij7wn6ewPC90ZXh0Pjwvc3ZnPg==>
 /name/
 	`tools`
-/abstract/
-	Abstractions, adapters, and implementations for development support tools.
-
-	- LLVM based coverage and delineation adapters.
-
 /authority/
 	`fault.io`
 /contact/
 	&<http://fault.io/critical>
+
+[ Abstract ]
+
+Abstractions, adapters, and implementations for development support tools.
+
+- LLVM based coverage and delineation adapters.
