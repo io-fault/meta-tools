@@ -1,96 +1,108 @@
 """
 # Instantiate the `fault-llvm` tools project into a target directory.
 """
+import os.path
 
 from fault.system import files
 from fault.system import process
+from fault.system.factors import context as factors
 
 from fault.project import system as lsf
 from fault.project import factory
 
-infra = {
-	'fault-c-interfaces': [
-		lsf.types.Reference('http://fault.io/integration/machine',
-			lsf.types.factor@'include'),
-		lsf.types.Reference('http://fault.io/integration/python',
-			lsf.types.factor@'include'),
+from . import query
+
+formats = {
+	'http://if.fault.io/factors/system': [
+		('elements', 'cc', '2014', 'c++'),
+		('elements', 'c', '2011', 'c'),
+		('void', 'h', 'header', 'c'),
+		('references', 'sr', 'lines', 'text'),
 	],
-	'integration-llvm': [
-		lsf.types.Reference('http://fault.io/integration/machine',
-			lsf.types.factor@'llvm.tools'),
+	'http://if.fault.io/factors/python': [
+		('module', 'py', 'psf-v3', 'python'),
+		('interface', 'pyi', 'psf-v3', 'python'),
 	],
-	'*.c': [
-		lsf.types.Reference('http://if.fault.io/factors',
-			lsf.types.factor@'system', 'type', 'c.2011'),
-	],
-	'*.cc': [
-		lsf.types.Reference('http://if.fault.io/factors',
-			lsf.types.factor@'system', 'type', 'c++.2011'),
-	],
-	'*.h': [
-		lsf.types.Reference('http://if.fault.io/factors',
-			lsf.types.factor@'system', 'type', 'c.header'),
-	],
-	'*.pyi': [
-		lsf.types.Reference('http://if.fault.io/factors',
-			lsf.types.factor@'python.interface', 'type', 'python.psf-v3'),
+	'http://if.fault.io/factors/meta': [
+		('references', 'fr', 'lines', 'text'),
 	],
 }
 
 info = lsf.types.Information(
-	identifier = 'http://fault.io/integration/machine//llvm',
-	name = 'fault-llvm',
+	identifier = 'http://fault.io/development/tools//llvm',
+	name = 'fault-llvm-adapters',
 	authority = 'fault.io',
-	abstract = "Tool adapter instance for LLVM.",
-	icon = dict([('emoji', "🛠️")]),
-	contact = "&<http://fault.io/critical>"
+	contact = "http://fault.io/critical"
 )
 
-def declare():
-	deline = "/* Delineation */\n"
-	deline += "#include <fault/llvm/json.c>\n"
-	deline += "#include <fault/llvm/delineate.c>\n"
-	dsrcs = [
-		('libclang-delineate.c', deline),
-	]
-	dsyms = [
-		'fault-c-interfaces',
-		'integration-llvm',
-		# Administration Provision
-		'libclang',
-	]
+fr = lsf.types.factor@'meta.references'
+sr = lsf.types.factor@'system.references'
 
-	llvmcov = "/* Coverage Extraction */\n"
-	llvmcov += "#include <coverage.cc>\n"
-	pyi = "/* Python Interfaces */\n"
-	pyi += "#include <python.c>\n"
-	csrcs = [
-		('python.c', pyi),
-		('llvm.cc', llvmcov),
-	]
-	csyms = [
-		'fault-c-interfaces',
-		'integration-llvm',
-		# Administration Provision
-		'llvm-coverage',
-	]
+def declare(ipq, deline):
+	includes, = ipq['include']
+	includes = files.root@includes
+	libdirs = sorted(list(ipq['library-directories']))
 
 	soles = [
-		('coverage', lsf.types.factor@'python.interface', "# Empty."),
-	]
-	sets = [
-		('delineate',
-			'http://if.fault.io/factors/system.executable', dsyms, dsrcs),
-		('extensions.coverage',
-			'http://if.fault.io/factors/system.extension', csyms, csrcs),
+		('fault', fr, '\n'.join([
+			'http://fault.io/integration/machines/include',
+		])),
+		('libclang-is', sr, '\n'.join(
+			libdirs + ['clang', ''],
+		)),
+		('libllvm-is', sr, '\n'.join(
+			libdirs + \
+			sorted(list(ipq['coverage-libraries'])) + \
+			sorted(list(ipq['system-libraries'])) + ['']
+		)),
 	]
 
-	return factory.Parameters.define(info, infra.items(), sets=sets, soles=soles)
+	sets = [
+		('libclang-if',
+			'http://if.fault.io/factors/meta.sources', (), [
+				('clang-c', (includes/'clang-c')),
+			]),
+		('libllvm-if',
+			'http://if.fault.io/factors/meta.sources', (), [
+				('llvm', (includes/'llvm')),
+				('llvm-c', (includes/'llvm-c')),
+			]),
+
+		('delineate',
+			'http://if.fault.io/factors/system.executable',
+			['.fault', '.libclang-is', '.libclang-if'], [
+				(x.identifier, x) for x in deline
+			]),
+		('ipquery',
+			'http://if.fault.io/factors/system.executable',
+			['.fault', '.libllvm-is', '.libllvm-if'], [
+				('ipq.cc', ipq['source']),
+			]),
+	]
+
+	return factory.Parameters.define(info, formats, sets=sets, soles=soles)
 
 def main(inv:process.Invocation) -> process.Exit:
-	target, = inv.args
+	target, llvmconfig = inv.args
+	route = files.Path.from_path(os.path.realpath(target))
 
-	route = files.Path.from_path(target)
-	p = declare()
+	# Identify ipq.cc, delineate.c, and json.c
+	factors.load()
+	factors.configure()
+	pd, pj, fp = factors.split(__name__)
+	llvm_d = fp.container
+	llvm_factors = {k[0]: v[1] for k, v in pj.select(llvm_d)}
+
+	# Get the libraries and interfaces needed out of &query
+	v, src, merge, export, ipqd = query.instrumentation(files.root@llvmconfig)
+	ipqd['source'] = llvm_factors[llvm_d/'ipq'][0][1]
+
+	# Sources of the image factors.
+	deline = (
+		llvm_factors[llvm_d/'delineate'][0][1],
+		llvm_factors[llvm_d/'json'][0][1],
+	)
+
+	p = declare(ipqd, deline)
 	factory.instantiate(p, route)
 	return inv.exit(0)
