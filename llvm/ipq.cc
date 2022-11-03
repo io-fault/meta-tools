@@ -6,6 +6,7 @@
 
 #define __STDC_LIMIT_MACROS 1
 #define __STDC_CONSTANT_MACROS 1
+#define __STDC_FORMAT_MACROS 1
 
 #include <TargetConditionals.h>
 #include <ctype.h>
@@ -285,6 +286,13 @@ print_sources(FILE *fp, char *arch, char *object)
 int
 main(int argc, char *argv[])
 {
+	if (argc < 2)
+	{
+		fprintf(stderr, "ipq regions|sources|counters architecture image [merged-profile-data]\n");
+		fprintf(stderr, "Merged profile data is only required by counters.\n");
+		return(248);
+	}
+
 	if (strcmp(argv[1], "regions") == 0)
 	{
 		if (argc != 4)
